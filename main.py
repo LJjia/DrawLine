@@ -190,7 +190,7 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         if(sys.platform=="darwin"):
             # mac
             file_path_prefix='file://'
-        elif (sys.platform=="window"):
+        elif (sys.platform=='win32'):
             # windows
             file_path_prefix = 'file:///'
         else:
