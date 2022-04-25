@@ -86,7 +86,7 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.pushButton.setText(_translate("MainWindow", "解析"))
-        self.lineEdit.setText(_translate("MainWindow", "*: $ $ $ $"))
+        self.lineEdit.setText(_translate("MainWindow", "*: %f %f %f %f"))
         self.pushButton_2.setText(_translate("MainWindow", "画点"))
         self.textEdit.setHtml(_translate("MainWindow",
                                          "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"

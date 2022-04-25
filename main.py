@@ -13,12 +13,15 @@ import sys, shutil
 # PyQt5中使用的基本控件都在PyQt5.QtWidgets模块中
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QSlider
 from PyQt5 import QtGui, QtCore
+from coord_trans import POINT_FORMAT,POINT_VALUE, abs_convert_normal
+import coord_trans
 from disp_interface import Ui_MainWindow, pic_label_width, pic_label_height
 import draw_line_func
 import GetXYPos
 import os
 import yuvAnly
 import read_yuv
+
 
 disp_yuv_tmp_path = './image/draw_line_tmp_yuv.jpg'
 disp_file_path = './image/draw_line_tmp.jpg'
@@ -60,6 +63,7 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         self.decode_pos = 0
         self.scale_pic_width = 0
         self.scale_pic_height = 0
+        self.pic_wh=[0,0]
         self.yuvAnlyer = yuvAnly.YuvAnlysiser()
         if not os.path.exists("./image"):
             os.makedirs("./image")
@@ -68,15 +72,14 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
 
         # some define and point format
 
-        self.XYWH_TO_X1X2Y1Y2='xywh_2_x1x2y1y2'
+        # self.XYWH_TO_X1X2Y1Y2='xywh_2_x1x2y1y2'
+        # 
+        # self.POINT_FORMAT_XYWH = 'point_format_xywh'
+        # self.POINT_FORMAT_X1X2Y1Y2 = 'point_format_x1x2y1y2'
+        # self.POINT_FORMAT_XY_LIST = 'point_format_xy_list'
+
         # 输入点位格式 默认xywh
-        self.POINT_FORMAT_XYWH = 'point_format_xywh'
-        self.POINT_FORMAT_X1X2Y1Y2 = 'point_format_x1x2y1y2'
-        self.point_pos_format = self.POINT_FORMAT_XYWH
-
-
-
-
+        self.point_pos_format = POINT_FORMAT.XYWH
 
         # 进度条规则
         # 值修改不做绑定
@@ -167,7 +170,8 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         draw_line_func.convert_file_type_to_jpeg(file_path, self.source_file_path_backup)
         self.setSuitPicDisp(self.source_file_path)
         w,h=draw_line_func.get_pic_param(self.source_file_path)
-        pic_info_text="图片宽:%s 高%s"%(w,h)
+        self.pic_wh=[w,h]
+        pic_info_text="图片宽:%s 高%s"%(self.pic_wh[0],self.pic_wh[1])
         self.label_info.setText(pic_info_text)
 
     def dragEnterEvent(self, e):
@@ -233,9 +237,9 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         # param check
         if len(point)!=4:
             print("func point_format_trans param error %s"%point)
-        if src_format==self.POINT_FORMAT_XYWH and dst_format==self.POINT_FORMAT_X1X2Y1Y2:
+        if src_format==self.POINT_FORMAT.XYWH and dst_format==self.POINT_FORMAT.X1X2Y1Y2:
             return (point[0],point[0]+point[2],point[1],point[1]+point[3])
-        if src_format==self.POINT_FORMAT_X1X2Y1Y2 and dst_format==self.POINT_FORMAT_XYWH:
+        if src_format==self.POINT_FORMAT.X1X2Y1Y2 and dst_format==self.POINT_FORMAT.XYWH:
             return (point[0],point[1],point[1]-point[0],point[3]-point[2])
 
 
@@ -244,10 +248,22 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         self.regulation_str = self.lineEdit.text()
         self.input_log = self.textEdit.toPlainText()
         outputPosition_list = GetXYPos.parse_file(self.input_log, self.regulation_str)
-        if(self.point_pos_format==self.POINT_FORMAT_X1X2Y1Y2):
+        if max(self.pic_wh)==0:
+            w,h=draw_line_func.get_pic_param(self.source_file_path)
+            self.pic_wh=[w,h]
+        print("parse config file",outputPosition_list)
+
+        for i in range(len(outputPosition_list)):
+            if max(outputPosition_list[i])>1:
+                # 证明给的点是绝对坐标值,这里转化为归一化坐标
+                outputPosition_list[i]=abs_convert_normal(outputPosition_list[i],self.pic_wh[0],self.pic_wh[1])
+
+        # 针对 x1x2y1y2做特殊处理
+        if(self.point_pos_format==POINT_FORMAT.X1X2Y1Y2):
             for i in range(len(outputPosition_list)):
-                outputPosition_list[i]=self.point_format_trans(outputPosition_list[i],self.POINT_FORMAT_X1X2Y1Y2,self.POINT_FORMAT_XYWH)
-                print(outputPosition_list[i])
+                outputPosition_list[i]=coord_trans.rect_point_format_trans(outputPosition_list[i],POINT_FORMAT.X1X2Y1Y2,POINT_FORMAT.XYWH)
+                
+
         outputPosition_disp = ""
         for point in outputPosition_list:
             outputPosition_disp += "{pos}\n".format(pos=point)

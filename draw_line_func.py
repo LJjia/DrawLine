@@ -12,34 +12,45 @@ __author__ = 'LJjia'
 
 from PIL import Image, ImageDraw
 import shutil
+import os
+from enum import Enum,unique
 
-#  文件路径先写死
+
+@unique
+class IMG_TYPE(Enum):
+    jpg=0,
+    jpeg=1,
+    png=2,
+    bmp=3,
+
+
+# 文件路径先写死
+# 设置本地保存的文件格式
 output_img_dir = './image/draw_line_tmp'
-image_type = 'jpg'
+image_type = IMG_TYPE.jpg.name
 output_img_path = output_img_dir + '.' + image_type
 
-if (image_type == 'jpg'):
+if (image_type == IMG_TYPE.jpg.name):
     img_save_mode = 'JPEG'
-elif (image_type == 'png'):
+elif (image_type == IMG_TYPE.png.name):
     img_save_mode = 'PNG'
 
 
 # bmp 形式不考虑
-
-def parse_file_suffix(path):
+def parse_file_suffix(path:str) -> Enum:
     '''
     解析文件后缀,并返回小写字母的文件类型 'jpg' 'png' 'bmp'
     :param path:
-    :return:
+    :return: 枚举类型
     '''
     file_suffix=path.split('.')[-1]
     file_suffix=file_suffix.lower()
-    if file_suffix=='jpg' or file_suffix=='jpeg':
-        return 'jpg'
-    elif file_suffix=='png':
-        return 'png'
-    elif file_suffix=='bmp':
-        return 'bmp'
+    if file_suffix==IMG_TYPE.jpg.name or file_suffix==IMG_TYPE.jpeg.name:
+        return IMG_TYPE.jpg
+    elif file_suffix==IMG_TYPE.png.name:
+        return IMG_TYPE.png
+    elif file_suffix==IMG_TYPE.bmp.name:
+        return IMG_TYPE.bmp
     else:
         return None
 
@@ -54,13 +65,18 @@ def convert_file_type_to_jpeg(file_path,save_path):
     if not img_format:
         print("file type path(%s) not support"%file_path)
         return None
-    elif img_format=='jpg':
+    elif img_format==IMG_TYPE.jpg:
         shutil.copy(file_path,save_path)
         return True
-    print(img_format,file_path,save_path)
-    img=Image.open(file_path)
-    img.save(save_path,"JPEG")
-    print(img_format, file_path,save_path)
+    elif img_format==IMG_TYPE.png:
+        img=Image.open(file_path)
+        img = img.convert('RGB')
+        img.save(save_path,"JPEG")
+    else:
+        print("not support file type",file_path)
+    
+    print('save file from %s to %s'%(file_path,save_path))
+    
     return True
 
 def get_pic_param(file_path):

@@ -12,16 +12,7 @@ __author__ = 'LJjia'
 
 import re
 
-def convert_normalized(x1,y1,width,height):
-    '''
-    将像素值形式的xy坐标转化为归一化坐标
-    :param x1:
-    :param y1:
-    :param width: 原图像宽高
-    :param height:
-    :return: 归一化之后小数形式的[x1,y1]
-    '''
-    return [x1/width,y1/height]
+
 
 def parse_position(input_str,re_expression):
     '''
@@ -32,7 +23,9 @@ def parse_position(input_str,re_expression):
     '''
     # 替换 *和$
     expression=re_expression.replace('*', r'.*?')
-    expression = expression.replace("$", r"(\d+\.\d+)")
+    expression = expression.replace("%f", r"(\d+\.\d+)")
+    expression = expression.replace("%d", r"(\d+)")
+    print("disp express ",expression)
     parse_result=re.findall(expression,input_str)
     # 得到的结果是一个列表中的元组,剥掉列表壳,返回元组
     if parse_result and parse_result[0]:
