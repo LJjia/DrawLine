@@ -181,7 +181,7 @@ def draw_rectangle(image_path, pos_list, color, pixel_size):
     # 如果xy坐标为归一化坐标
     if (pos_list[0][0] <= 1 and pos_list[0][1] <= 1):
         pos_list = float_to_pixel_list(w, h, pos_list)
-    print(pos_list)
+    print('draw rect xywh',pos_list)
     for rect in pos_list:
         # 原来的类型是(x,y,w,h)需要转化一下  变成(x1,y1,x2,y2)
         rect_wh=(rect[0],rect[1],rect[0]+rect[2],rect[1]+rect[3])

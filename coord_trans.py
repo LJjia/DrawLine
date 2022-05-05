@@ -27,8 +27,9 @@ class POINT_FORMAT(Enum):
     XY=0,
     # 矩形坐标
     XYWH=1, #左上角xy+整体宽高
-    X1X2Y1Y2=2,
-    X1Y1X2Y2=3,
+    CXYWH=2, # 中心xy坐标+整体宽高
+    X1X2Y1Y2=5,
+    X1Y1X2Y2=6,
     # 点集坐标
     XY_LIST=10,
 
@@ -42,21 +43,38 @@ class POINT_VALUE(Enum):
     ABSOLUTE=1,
 
 
+'''
+description: 由src_format转换到xywh格式
+param {*} point
+param {*} src_format
+return {*}
+'''
 def trans_rect_point_to_xywh(point,src_format):
     if len(point)!=4:
         print("func point_format_trans param error %s"%point)
     if src_format==POINT_FORMAT.XYWH:
         return point
+    elif src_format==POINT_FORMAT.CXYWH:
+        return (point[0]-point[2]/2,point[1]-point[3]/2,point[2],point[3])
     elif src_format==POINT_FORMAT.X1X2Y1Y2:
         return (point[0],point[2],point[1]-point[0],point[3]-point[2])
     elif src_format==POINT_FORMAT.X1Y1X2Y2:
         return (point[0],point[1],point[2]-point[0],point[3]-point[1])
 
+
+'''
+description: 从xywh格式转换到dst_format格式
+param {*} point
+param {*} dst_format
+return {*}
+'''
 def trans_rect_point_from_xywh(point,dst_format):
     if len(point)!=4:
         print("func point_format_trans param error %s"%point)
     if dst_format==POINT_FORMAT.XYWH:
         return point
+    elif dst_format==POINT_FORMAT.CXYWH:
+        return (point[0]+point[2]/2,point[1]+point[3]/2,point[2],point[3])
     elif dst_format==POINT_FORMAT.X1X2Y1Y2:
         return (point[0],point[0]+point[2],point[1],point[1]+point[3])
     elif dst_format==POINT_FORMAT.X1Y1X2Y2:
@@ -71,14 +89,13 @@ def rect_point_format_trans(point,src_format,dst_format):
     # param check
     if len(point)!=4:
         print("func point_format_trans param error %s"%point)
-    elif src_format==POINT_FORMAT.XYWH and dst_format==POINT_FORMAT.X1X2Y1Y2:
-        tmp=trans_rect_point_from_xywh(point,POINT_FORMAT.X1X2Y1Y2)
-        return tmp
-    elif src_format==POINT_FORMAT.X1X2Y1Y2 and dst_format==POINT_FORMAT.XYWH:
-        tmp =trans_rect_point_to_xywh(point,POINT_FORMAT.X1X2Y1Y2)
-        return tmp
+    if src_format in POINT_FORMAT and dst_format in POINT_FORMAT:
+        # 转换成中间表达,再转换成输出
+        tmp=trans_rect_point_to_xywh(point,src_format)
+        ret=trans_rect_point_from_xywh(tmp,dst_format)
+        return ret
     else :
-        print("input type %s to %s"%(src_format,dst_format))
+        print("input type %s to %s not implement!!"%(src_format,dst_format))
         return (0,0,0,0)
         # raise ValueError("input type %s to %s"%(src_format,dst_format))
 

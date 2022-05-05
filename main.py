@@ -9,7 +9,8 @@ __author__ = 'LJjia'
 #  Description @    调用显示界面主函数
 # ********************************************************************
 
-import sys, shutil
+import sys, shutil ,os ,pickle
+from enum import Enum
 # PyQt5中使用的基本控件都在PyQt5.QtWidgets模块中
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QSlider
 from PyQt5 import QtGui, QtCore
@@ -17,8 +18,7 @@ from coord_trans import POINT_FORMAT,POINT_VALUE, abs_convert_normal
 import coord_trans
 from disp_interface import Ui_MainWindow, pic_label_width, pic_label_height
 import draw_line_func
-import GetXYPos
-import os
+import get_xy_pos
 import yuvAnly
 import read_yuv
 
@@ -26,6 +26,16 @@ import read_yuv
 disp_yuv_tmp_path = './image/draw_line_tmp_yuv.jpg'
 disp_file_path = './image/draw_line_tmp.jpg'
 disp_file_path_backup = './image/draw_line_tmp_backup.jpg'
+
+class SAVE_DICTKEY_INFO(Enum):
+    '''
+    description: 保存的字典关键字名称
+    param {*}
+    return {*}
+    '''    
+    input_log=0,
+    regulation_str=1,
+
 
 
 
@@ -69,17 +79,20 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
             os.makedirs("./image")
         if os.path.exists(self.source_file_path):
             self.setSuitPicDisp(self.source_file_path)
-
-        # some define and point format
-
-        # self.XYWH_TO_X1X2Y1Y2='xywh_2_x1x2y1y2'
-        # 
-        # self.POINT_FORMAT_XYWH = 'point_format_xywh'
-        # self.POINT_FORMAT_X1X2Y1Y2 = 'point_format_x1x2y1y2'
-        # self.POINT_FORMAT_XY_LIST = 'point_format_xy_list'
+        self.input_dict={}
+        self.input_dict_dir="./image/input_param.pkl"
+        if os.path.exists(self.input_dict_dir):
+            # 记忆模式,保存上次的结果
+            with open(self.input_dict_dir, 'rb') as f:
+                dict_tmp = pickle.load(f)
+                assert isinstance(dict_tmp,dict)
+                if SAVE_DICTKEY_INFO.input_log.name in dict_tmp:
+                    self.lineEdit.setText(dict_tmp[SAVE_DICTKEY_INFO.regulation_str.name])
+                if SAVE_DICTKEY_INFO.regulation_str.name in dict_tmp:
+                    self.textEdit.setText(dict_tmp[SAVE_DICTKEY_INFO.input_log.name])
 
         # 输入点位格式 默认xywh
-        self.point_pos_format = POINT_FORMAT.XYWH
+        self.point_pos_format = POINT_FORMAT.CXYWH
 
         # 进度条规则
         # 值修改不做绑定
@@ -233,42 +246,38 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         shutil.copy(self.source_file_path_backup, self.source_file_path)
         self.setSuitPicDisp(self.source_file_path)
 
-    def point_format_trans(self,point,src_format,dst_format):
-        # param check
-        if len(point)!=4:
-            print("func point_format_trans param error %s"%point)
-        if src_format==self.POINT_FORMAT.XYWH and dst_format==self.POINT_FORMAT.X1X2Y1Y2:
-            return (point[0],point[0]+point[2],point[1],point[1]+point[3])
-        if src_format==self.POINT_FORMAT.X1X2Y1Y2 and dst_format==self.POINT_FORMAT.XYWH:
-            return (point[0],point[1],point[1]-point[0],point[3]-point[2])
-
 
     def input_param_parse(self):
         # 获取和设置输入文本内容
         self.regulation_str = self.lineEdit.text()
         self.input_log = self.textEdit.toPlainText()
-        outputPosition_list = GetXYPos.parse_file(self.input_log, self.regulation_str)
+        outputPosition_list = get_xy_pos.parse_file(self.input_log, self.regulation_str)
         if max(self.pic_wh)==0:
             w,h=draw_line_func.get_pic_param(self.source_file_path)
             self.pic_wh=[w,h]
-        print("parse config file",outputPosition_list)
 
         for i in range(len(outputPosition_list)):
             if max(outputPosition_list[i])>1:
                 # 证明给的点是绝对坐标值,这里转化为归一化坐标
                 outputPosition_list[i]=abs_convert_normal(outputPosition_list[i],self.pic_wh[0],self.pic_wh[1])
 
-        # 针对 x1x2y1y2做特殊处理
-        if(self.point_pos_format==POINT_FORMAT.X1X2Y1Y2):
+        # 针对 其他点集皆转化为xywh格式做特殊处理
+        if(self.point_pos_format!=POINT_FORMAT.XYWH):
             for i in range(len(outputPosition_list)):
-                outputPosition_list[i]=coord_trans.rect_point_format_trans(outputPosition_list[i],POINT_FORMAT.X1X2Y1Y2,POINT_FORMAT.XYWH)
-                
+                outputPosition_list[i]=coord_trans.rect_point_format_trans(outputPosition_list[i],self.point_pos_format,POINT_FORMAT.XYWH)
 
         outputPosition_disp = ""
         for point in outputPosition_list:
             outputPosition_disp += "{pos}\n".format(pos=point)
         self.outputPosition = outputPosition_list
         self.textEdit_2.setText(outputPosition_disp)
+        # 保存临时字典
+        with open(self.input_dict_dir, 'wb') as f:
+            param_dict={
+                SAVE_DICTKEY_INFO.input_log.name:self.input_log,
+                SAVE_DICTKEY_INFO.regulation_str.name:self.regulation_str,
+            }
+            pickle.dump(param_dict, f)
         print("解析出来列表", outputPosition_list)
         self.ifParserParam = 1
 
