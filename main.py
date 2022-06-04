@@ -49,11 +49,12 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         self.label.setMouseTracking(True)
         self.label.installEventFilter(self.label)
         # 设置信号的绑定关系
-        self.pushButton.clicked.connect(self.input_param_parse)
-        self.pushButton_2.clicked.connect(self.draw_point)
-        self.pushButton_3.clicked.connect(self.draw_line)
-        self.pushButton_4.clicked.connect(self.draw_rectangle)
-        self.pushButton_5.clicked.connect(self.restore)
+        self.pushButton_analy.clicked.connect(self.input_param_parse)
+        self.pushButton_point.clicked.connect(self.draw_point)
+        self.pushButton_line.clicked.connect(self.draw_line)
+        self.pushButton_rect.clicked.connect(self.draw_rectangle)
+        self.pushButton_restore.clicked.connect(self.restore)
+        self.cb.currentIndexChanged[str].connect(self.proc_combox)
         self.actionopen.triggered.connect(self.open_file)
         # 初始化一些全局变量
         self.source_file_path = disp_file_path
@@ -87,9 +88,9 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
                 dict_tmp = pickle.load(f)
                 assert isinstance(dict_tmp,dict)
                 if SAVE_DICTKEY_INFO.input_log.name in dict_tmp:
-                    self.lineEdit.setText(dict_tmp[SAVE_DICTKEY_INFO.regulation_str.name])
+                    self.textEdit_log.setText(dict_tmp[SAVE_DICTKEY_INFO.input_log.name])
                 if SAVE_DICTKEY_INFO.regulation_str.name in dict_tmp:
-                    self.textEdit.setText(dict_tmp[SAVE_DICTKEY_INFO.input_log.name])
+                    self.lineEdit_reg.setText(dict_tmp[SAVE_DICTKEY_INFO.regulation_str.name])
 
         # 输入点位格式 默认xywh
         self.point_pos_format = POINT_FORMAT.CXYWH
@@ -101,6 +102,10 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         # self.horizontalSlider.sliderReleased.connect(self.drag_confirm)
         # self.horizontalSlider.setTickPosition(QSlider.TicksBelow)#设置刻度位置，在下方
         # self.horizontalSlider.setMaximum(400)
+
+    def proc_combox(self,in_str):
+        print(type(in_str),in_str)
+        # 处理字符串数据
 
     def calc_normal_value_in_pic(self,x,y):
         '''
