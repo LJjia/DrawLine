@@ -161,8 +161,29 @@ def draw_line(image_path, pos_list, color, pixel_size):
         pos_list = float_to_pixel_list(w, h, pos_list)
 
     draw.line(pos_list, fill=color, width=pixel_size)
-    if (len(pos_list) >= 2):
-        draw.line([pos_list[0], pos_list[-1]], fill=color, width=pixel_size)
+    # 不绘制闭合曲线,闭合曲线是多边形的处理
+    # if (len(pos_list) >= 2):
+    #     draw.line([pos_list[0], pos_list[-1]], fill=color, width=pixel_size)
+    img.save(output_img_path, img_save_mode)
+
+
+
+def draw_polygon(image_path, pos_list, color, pixel_size):
+    '''
+    画线函数 pos_list中每个元素为点坐标,不用转化,直接可以画线
+    :param image_path:
+    :param pos_list:
+    :param color:
+    :param pixel_size:
+    :return:
+    '''
+    img = Image.open(image_path)
+    draw = ImageDraw.Draw(img)
+    w, h = img.size
+    if (pos_list[0][0] <= 1 and pos_list[0][1] <= 1):
+        pos_list = float_to_pixel_list(w, h, pos_list)
+
+    draw.polygon(pos_list, fill=color, width=pixel_size)
     img.save(output_img_path, img_save_mode)
 
 

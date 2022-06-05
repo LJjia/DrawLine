@@ -21,14 +21,14 @@ class POINT_FORMAT(Enum):
     description: 点集种类枚举
     param {*}
     return {*}
-    '''    
-    # 点坐标
-    XY=0,
+    '''
+    XYWH = 0,  # 左上角xy+整体宽高
     # 矩形坐标
-    XYWH=1, #左上角xy+整体宽高
-    CXYWH=2, # 中心xy坐标+整体宽高
-    X1X2Y1Y2=5,
-    X1Y1X2Y2=6,
+    CXYWH=1, # 中心xy坐标+整体宽高
+    X1X2Y1Y2=2,
+    X1Y1X2Y2=3,
+    # 点坐标
+    XY = 5,
     # 点集坐标
     XY_LIST=10,
 

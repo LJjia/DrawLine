@@ -49,23 +49,19 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         self.label.setMouseTracking(True)
         self.label.installEventFilter(self.label)
         # 设置信号的绑定关系
-        self.pushButton_analy.clicked.connect(self.input_param_parse)
         self.pushButton_point.clicked.connect(self.draw_point)
         self.pushButton_line.clicked.connect(self.draw_line)
         self.pushButton_rect.clicked.connect(self.draw_rectangle)
         self.pushButton_restore.clicked.connect(self.restore)
+        self.pushButton_polygon.clicked.connect(self.draw_polygon)
         self.cb.currentIndexChanged[str].connect(self.proc_combox)
         self.actionopen.triggered.connect(self.open_file)
         # 初始化一些全局变量
         self.source_file_path = disp_file_path
         self.source_file_path_backup = disp_file_path_backup
         self.source_yuv_path_backup = disp_yuv_tmp_path
-        self.regulation_str = ""
-        self.input_log = ""
-        self.outputPosition = []
+        self.disp_pic_info(self.source_file_path)
         self.file_path = './test/test_img.jpg'
-        # 是否爬取过参数,每次画线前要先检查
-        self.ifParserParam = 0
         self.setAcceptDrops(True)
         # 设置进度条,这部分属于视频解码的内容
         # 分别为,视频总长,当前滑块在slider中的位置,确定需要解码的位置
@@ -92,8 +88,9 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
                 if SAVE_DICTKEY_INFO.regulation_str.name in dict_tmp:
                     self.lineEdit_reg.setText(dict_tmp[SAVE_DICTKEY_INFO.regulation_str.name])
 
-        # 输入点位格式 默认xywh
-        self.point_pos_format = POINT_FORMAT.CXYWH
+        # 输入点位格式
+        # 为了和选择的统一,先迭代出第一个
+        self.point_pos_format = iter(POINT_FORMAT).__next__()
 
         # 进度条规则
         # 值修改不做绑定
@@ -104,8 +101,9 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         # self.horizontalSlider.setMaximum(400)
 
     def proc_combox(self,in_str):
-        print(type(in_str),in_str)
-        # 处理字符串数据
+        # 修改type类型
+        self.point_pos_format=eval("POINT_FORMAT.%s"%(in_str))
+
 
     def calc_normal_value_in_pic(self,x,y):
         '''
@@ -137,6 +135,14 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         else:
             return (-1,-1)
 
+    def set_debug_msg(self,msg):
+        if(not isinstance(msg,str)):
+            return
+        self.global_debug_info.setStyleSheet("color:red")
+        self.global_debug_info.setText(msg)
+
+    def clear_debug_msg(self):
+        self.global_debug_info.setText("")
 
     def mousePressEvent(self, event):
         # 尝试按住拖动时是否会打印
@@ -190,6 +196,16 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         w,h=draw_line_func.get_pic_param(self.source_file_path)
         self.pic_wh=[w,h]
         pic_info_text="图片宽:%s 高%s"%(self.pic_wh[0],self.pic_wh[1])
+        self.label_info.setText(pic_info_text)
+
+    def disp_pic_info(self,file_path=""):
+        if(not file_path):
+            file_path=self.source_file_path
+        if not os.path.exists(file_path):
+            return
+        w, h = draw_line_func.get_pic_param(file_path)
+        self.pic_wh = [w, h]
+        pic_info_text = "图片宽:%s 高%s" % (self.pic_wh[0], self.pic_wh[1])
         self.label_info.setText(pic_info_text)
 
     def dragEnterEvent(self, e):
@@ -251,67 +267,163 @@ class MyMainForm(QMainWindow, Ui_MainWindow):
         shutil.copy(self.source_file_path_backup, self.source_file_path)
         self.setSuitPicDisp(self.source_file_path)
 
+    def save_input_log(self,intput_log,re_exp):
+        # 保存临时字典
+        with open(self.input_dict_dir, 'wb') as f:
+            param_dict = {
+                SAVE_DICTKEY_INFO.input_log.name: intput_log,
+                SAVE_DICTKEY_INFO.regulation_str.name: re_exp,
+            }
+            pickle.dump(param_dict, f)
 
-    def input_param_parse(self):
-        # 获取和设置输入文本内容
-        self.regulation_str = self.lineEdit.text()
-        self.input_log = self.textEdit.toPlainText()
-        outputPosition_list = get_xy_pos.parse_file(self.input_log, self.regulation_str)
-        if max(self.pic_wh)==0:
-            w,h=draw_line_func.get_pic_param(self.source_file_path)
-            self.pic_wh=[w,h]
-
+    def parse_rect_format(self,format):
+        print("parse result ")
+        regulation_str = self.lineEdit_reg.text()
+        input_log = self.textEdit_log.toPlainText()
+        outputPosition_list = get_xy_pos.parse_file(input_log, regulation_str)
+        self.disp_pic_info()
+        print(outputPosition_list)
         for i in range(len(outputPosition_list)):
             if max(outputPosition_list[i])>1:
                 # 证明给的点是绝对坐标值,这里转化为归一化坐标
                 outputPosition_list[i]=abs_convert_normal(outputPosition_list[i],self.pic_wh[0],self.pic_wh[1])
-
         # 针对 其他点集皆转化为xywh格式做特殊处理
-        if(self.point_pos_format!=POINT_FORMAT.XYWH):
+        if (format != POINT_FORMAT.XYWH):
             for i in range(len(outputPosition_list)):
-                outputPosition_list[i]=coord_trans.rect_point_format_trans(outputPosition_list[i],self.point_pos_format,POINT_FORMAT.XYWH)
-
+                outputPosition_list[i] = coord_trans.rect_point_format_trans(outputPosition_list[i],
+                                                                             format,
+                                                                             POINT_FORMAT.XYWH)
+        # 打印str
         outputPosition_disp = ""
         for point in outputPosition_list:
             outputPosition_disp += "{pos}\n".format(pos=point)
-        self.outputPosition = outputPosition_list
-        self.textEdit_2.setText(outputPosition_disp)
-        # 保存临时字典
-        with open(self.input_dict_dir, 'wb') as f:
-            param_dict={
-                SAVE_DICTKEY_INFO.input_log.name:self.input_log,
-                SAVE_DICTKEY_INFO.regulation_str.name:self.regulation_str,
-            }
-            pickle.dump(param_dict, f)
+        self.textEdit_output_res.setText(outputPosition_disp)
+        self.save_input_log()
         print("解析出来列表", outputPosition_list)
-        self.ifParserParam = 1
+        # 返回list
+        return outputPosition_list
 
     def draw_rectangle(self):
-        if not self.ifParserParam:
-            self.input_param_parse()
-        if not self.check_format(self.outputPosition, 'rectangle'):
+        rect_enum=[POINT_FORMAT.XYWH,POINT_FORMAT.CXYWH,POINT_FORMAT.X1X2Y1Y2,POINT_FORMAT.X1Y1X2Y2]
+        if(self.point_pos_format not in rect_enum):
+            self.set_debug_msg("%s not rect format"%(self.point_pos_format.name))
             return
-        # 保存的路径和self.source_file_path一样,在draw_line_func中设置的
-        draw_line_func.draw_rectangle(self.source_file_path, self.outputPosition, color='red', pixel_size=4)
-        # 实例显示QApplication.processEvents()这个函数放在画矩形函数最后面没什么用
-        # 不如直接显示设置label的属性
+        outputPosition_list=self.parse_rect_format(self.point_pos_format)
+        if not self.check_format(outputPosition_list, 'rectangle'):
+            self.set_debug_msg("parse str res not rect format!")
+            return
+
+        draw_line_func.draw_rectangle(self.source_file_path, outputPosition_list, color='red', pixel_size=4)
         self.setSuitPicDisp(self.source_file_path)
-        self.ifParserParam = 0
+        # 实例显示QApplication.processEvents()这个函数放在画矩形函数最后面没什么用
         # QApplication.processEvents()
+        return self.clear_debug_msg()
+
+
+    def parse_line_format(self):
+        print("parse result ")
+        regulation_str = self.lineEdit_reg.text()
+        input_log = self.textEdit_log.toPlainText()
+        outputPosition_list = get_xy_pos.parse_file(input_log, regulation_str)
+        self.disp_pic_info()
+        print(outputPosition_list)
+        for i in range(len(outputPosition_list)):
+            if max(outputPosition_list[i]) > 1:
+                # 证明给的点是绝对坐标值,这里转化为归一化坐标
+                outputPosition_list[i] = abs_convert_normal(outputPosition_list[i], self.pic_wh[0], self.pic_wh[1])
+        # 打印str
+        outputPosition_disp = ""
+        for point in outputPosition_list:
+            outputPosition_disp += "{pos}\n".format(pos=point)
+        self.textEdit_output_res.setText(outputPosition_disp)
+        # 保存临时字典
+        self.save_input_log()
+        print("解析出来列表", outputPosition_list)
+        # 返回list
+        return outputPosition_list
 
     def draw_line(self):
-        if not self.check_format(self.outputPosition, 'line'):
+        line_enum = [POINT_FORMAT.XY_LIST]
+        if (self.point_pos_format not in line_enum):
+            self.set_debug_msg("%s not rect format" % (self.point_pos_format.name))
             return
-        draw_line_func.draw_line(self.source_file_path, self.outputPosition, color='red', pixel_size=4)
+        outputPosition_list = self.parse_line_format()
+        if not self.check_format(outputPosition_list, 'line'):
+            self.set_debug_msg("parse str res not line format!")
+            return
+        draw_line_func.draw_line(self.source_file_path, outputPosition_list, color='red', pixel_size=4)
         self.setSuitPicDisp(self.source_file_path)
-        self.ifParserParam = 0
+        return self.clear_debug_msg()
+
+    def parse_point_format(self):
+        print("parse result ")
+        regulation_str = self.lineEdit_reg.text()
+        input_log = self.textEdit_log.toPlainText()
+        outputPosition_list = get_xy_pos.parse_file(input_log, regulation_str)
+        self.disp_pic_info()
+        print(outputPosition_list)
+        for i in range(len(outputPosition_list)):
+            if max(outputPosition_list[i]) > 1:
+                # 证明给的点是绝对坐标值,这里转化为归一化坐标
+                outputPosition_list[i] = abs_convert_normal(outputPosition_list[i], self.pic_wh[0], self.pic_wh[1])
+        # 打印str
+        outputPosition_disp = ""
+        for point in outputPosition_list:
+            outputPosition_disp += "{pos}\n".format(pos=point)
+        self.textEdit_output_res.setText(outputPosition_disp)
+        # 保存临时字典
+        self.save_input_log()
+        print("解析出来列表", outputPosition_list)
+        # 返回list
+        return outputPosition_list
 
     def draw_point(self):
-        if not self.check_format(self.outputPosition, 'point'):
+        point_enum = [POINT_FORMAT.XY_LIST,POINT_FORMAT.XY]
+        if (self.point_pos_format not in point_enum):
+            self.set_debug_msg("%s not point format" % (self.point_pos_format.name))
             return
-        draw_line_func.draw_point(self.source_file_path, self.outputPosition, color='red', pixel_size=4)
+        outputPosition_list = self.parse_line_format()
+        if not self.check_format(outputPosition_list, 'point'):
+            self.set_debug_msg("parse str res not line format!")
+            return
+        draw_line_func.draw_point(self.source_file_path, outputPosition_list, color='red', pixel_size=6)
         self.setSuitPicDisp(self.source_file_path)
-        self.ifParserParam = 0
+        return self.clear_debug_msg()
+
+
+    def parse_polygon_format(self):
+        regulation_str = self.lineEdit_reg.text()
+        input_log = self.textEdit_log.toPlainText()
+        outputPosition_list = get_xy_pos.parse_file(input_log, regulation_str)
+        self.disp_pic_info()
+        print(outputPosition_list)
+        for i in range(len(outputPosition_list)):
+            if max(outputPosition_list[i]) > 1:
+                # 证明给的点是绝对坐标值,这里转化为归一化坐标
+                outputPosition_list[i] = abs_convert_normal(outputPosition_list[i], self.pic_wh[0], self.pic_wh[1])
+        # 打印str
+        outputPosition_disp = ""
+        for point in outputPosition_list:
+            outputPosition_disp += "{pos}\n".format(pos=point)
+        self.textEdit_output_res.setText(outputPosition_disp)
+        # 保存临时字典
+        self.save_input_log()
+        print("解析出来列表", outputPosition_list)
+        # 返回list
+        return outputPosition_list
+
+    def draw_polygon(self):
+        point_enum = [POINT_FORMAT.XY_LIST]
+        if (self.point_pos_format not in point_enum):
+            self.set_debug_msg("%s not point format" % (self.point_pos_format.name))
+            return
+        outputPosition_list = self.parse_line_format()
+        if not self.check_format(outputPosition_list, 'point'):
+            self.set_debug_msg("parse str res not line format!")
+            return
+        draw_line_func.draw_polygon(self.source_file_path, outputPosition_list, color='red', pixel_size=6)
+        self.setSuitPicDisp(self.source_file_path)
+        return self.clear_debug_msg()
 
     # def drag_slider(self,value):
     #     '''

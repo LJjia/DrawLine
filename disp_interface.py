@@ -8,6 +8,7 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+from coord_trans import POINT_FORMAT
 
 pic_label_width=1280
 pic_label_height=720
@@ -36,10 +37,6 @@ class Ui_MainWindow(object):
 
         self.pushButton_restore = QtWidgets.QPushButton(self.centralwidget)
         self.pushButton_restore.setGeometry(QtCore.QRect(30, 330, 80, 30))
-        self.pushButton_restore.setObjectName("pushButton_reset")
-        self.pushButton_analy = QtWidgets.QPushButton(self.centralwidget)
-        self.pushButton_analy.setGeometry(QtCore.QRect(30, 290, 80, 30))
-        self.pushButton_analy.setObjectName("pushButton_analy")
 
         self.pushButton_rect = QtWidgets.QPushButton(self.centralwidget)
         self.pushButton_rect.setGeometry(QtCore.QRect(160, 270, 80, 30))
@@ -55,7 +52,8 @@ class Ui_MainWindow(object):
         self.pushButton_polygon.setObjectName("pushButton_polygon")
 
         self.cb = QtWidgets.QComboBox(self)
-        self.cb.addItems(["XY", "XYWH", "CXYWH","X1X2Y1Y2","X1Y1X2Y2","XY_LIST"])
+        # 直接从枚举类中获取key list
+        self.cb.addItems(list(POINT_FORMAT.__members__.keys()))
         self.cb.setGeometry(QtCore.QRect(10,450,120,30))
         # self.cb.move(10,450)
 
@@ -72,6 +70,10 @@ class Ui_MainWindow(object):
         self.label_info.setObjectName("mouse")
         self.label_info.setGeometry(QtCore.QRect(10, 650, 250, 40))
         self.label_info.setText("显示信息")
+        self.global_debug_info = QtWidgets.QLabel(self.centralwidget)
+        self.global_debug_info.setObjectName("debug_info")
+        self.global_debug_info.setGeometry(QtCore.QRect(10, 700, 250, 40))
+        self.global_debug_info.setText("")
         # self.label_mouse.adjustSize()
 
 
@@ -100,7 +102,6 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.pushButton_analy.setText(_translate("MainWindow", "解析"))
         self.lineEdit_reg.setText(_translate("MainWindow", "*: %f %f %f %f"))
         self.pushButton_point.setText(_translate("MainWindow", "画点"))
         self.textEdit_log.setHtml(_translate("MainWindow",

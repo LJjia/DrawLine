@@ -27,6 +27,7 @@ def parse_position(input_str,re_expression):
     expression = expression.replace("%d", r"(\d+)")
     # print("disp express ",expression)
     parse_result=re.findall(expression,input_str)
+
     # 得到的结果是一个列表中的元组,剥掉列表壳,返回元组
     if parse_result and parse_result[0]:
         tuple_result=tuple(map(float,parse_result[0]))
@@ -42,6 +43,7 @@ def parse_file(input_str,re_expression):
     :return:
     '''
     input_line_list=input_str.split('\n')
+
     result=[]
     for line in input_line_list:
         # print("input log every line value ",line)
